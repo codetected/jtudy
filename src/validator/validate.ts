@@ -77,7 +77,6 @@ const phoneCheck = async (req: Request, res: Response, next: NextFunction) => {
         requestLog(req);
         return res.status(422).json({ errors: error });
     }
-    console.log('옴');
     next();
 };
 

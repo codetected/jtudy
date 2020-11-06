@@ -1,10 +1,12 @@
 import express, { NextFunction, Request, Response, Router } from 'express';
-import { Result, ValidationError, validationResult } from 'express-validator';
-import { MongoError } from 'mongodb';
-import professorModel from '../schema/professor';
-import studentModel, { Student } from '../schema/student';
-import validateFn from '../validator/validate';
-import { requestLog } from '../winston';
+import { MongoError, ObjectID } from 'mongodb';
+import mongoose from 'mongoose';
+import professorModel from '../../schema/professor';
+import studentModel, { Student } from '../../schema/student';
+import validateFn from '../../validator/validate';
+import { requestLog } from '../../winston';
+import apicache from 'apicache';
+let cache = apicache.middleware;
 
 const router: Router = express.Router();
 
@@ -74,7 +76,6 @@ router.patch('/', validateFn.nameCheck, validateFn.phoneCheckForUpdate, validate
         if (!age) phone = user.phone;
         if (!professor) professor = user.professor;
         if (phone || age || professor) {
-            console.log('교수라고 : ', professor);
             if (professor) {
                 const professorData = await professorModel.findOne({ name: professor });
                 if (!professorData) {
@@ -97,6 +98,23 @@ router.patch('/', validateFn.nameCheck, validateFn.phoneCheckForUpdate, validate
     } else {
         res.status(400).send('해당 유져가 존재하지 않습니다.');
     }
+});
+
+router.get('/search', validateFn.nameCheck, validateFn.ageCheck, validateFn.sexCheck, async (req, res) => {
+    const { age, name, sex } = req.body;
+
+    const professor = await professorModel.findOne({ name });
+    const professorId: ObjectID = mongoose.Types.ObjectId(professor?.id);
+    const studentData = await studentModel.aggregate([
+        {
+            $match: { professor: professorId, age: { $gt: age }, sex },
+        },
+        {
+            $project: { name: 1, age: 1, phone: 1 },
+        },
+    ]);
+    console.log('이 : ', studentData);
+    res.json(studentData);
 });
 
 export default router;
