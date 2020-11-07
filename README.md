@@ -1,12 +1,12 @@
 ## node.js & Express framework을 이용한 REST API Server
 
-- [ ] 서버 다운 시 재시작 되는 환경 구성.
+- [x] 서버 다운 시 재시작 되는 환경 구성.
 - [x] 완벽한 Error Handling.
 - [x] 개발 및 테스팅 전용 라우팅
 - [x] express-validator를 사용한 데이터 검증.
 - [x] Helmet된 보안 적용.
 - [x] Winston을 이용한 로깅 구현. (에러메세지 url 상태코드 시간 표시)
-- [ ] TypeScript 기반.
+- [x] TypeScript 기반.
 
 - [ ] Google App Engine를 이용한 Deploy.
 

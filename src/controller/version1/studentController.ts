@@ -28,14 +28,22 @@ const valueCheck = async (req: Request, res: Response, next: NextFunction) => {
 
 router.get('/', valueCheck, validateFn.nameCheck, async (req: Request, res: Response) => {
     const name = req.query.name;
-    const user = await studentModel.aggregate([
-        {
-            $match: {
-                name: name,
+    await studentModel
+        .aggregate([
+            {
+                $match: {
+                    name: name,
+                },
             },
-        },
-    ]);
-    res.status(200).send(user);
+        ])
+        .then((data) => {
+            if (data.length > 0) {
+                res.status(200).send(data);
+            } else {
+                res.status(400).send('해당되는 유져 정보가 없습니다.');
+            }
+        })
+        .catch((err) => res.status(400).send(err));
 });
 
 router.post('/', validateFn.typeStudentCheck, validateFn.nameCheck, validateFn.ageCheck, validateFn.phoneCheck, validateFn.sexCheck, validateFn.professorCheck, async (req: Request, res: Response) => {
@@ -72,18 +80,10 @@ router.patch('/', validateFn.nameCheck, validateFn.phoneCheckForUpdate, validate
 
     const user = await studentModel.findOne({ name });
     if (user) {
-        if (!phone) phone = user.phone;
-        if (!age) phone = user.phone;
-        if (!professor) professor = user.professor;
         if (phone || age || professor) {
-            if (professor) {
-                const professorData = await professorModel.findOne({ name: professor });
-                if (!professorData) {
-                    res.status(500).send('해당되는 교수 정보가 없습니다.');
-                } else {
-                    professor = professorData.id;
-                }
-            }
+            if (!phone) phone = user.phone;
+            if (!age) phone = user.phone;
+            if (!professor) professor = user.professor;
             await studentModel.updateOne({ _id: user.id }, { phone, age, professor }, (err) => {
                 if (err) {
                     requestLog(req);
@@ -98,23 +98,6 @@ router.patch('/', validateFn.nameCheck, validateFn.phoneCheckForUpdate, validate
     } else {
         res.status(400).send('해당 유져가 존재하지 않습니다.');
     }
-});
-
-router.get('/search', validateFn.nameCheck, validateFn.ageCheck, validateFn.sexCheck, async (req, res) => {
-    const { age, name, sex } = req.body;
-
-    const professor = await professorModel.findOne({ name });
-    const professorId: ObjectID = mongoose.Types.ObjectId(professor?.id);
-    const studentData = await studentModel.aggregate([
-        {
-            $match: { professor: professorId, age: { $gt: age }, sex },
-        },
-        {
-            $project: { name: 1, age: 1, phone: 1 },
-        },
-    ]);
-    console.log('이 : ', studentData);
-    res.json(studentData);
 });
 
 export default router;

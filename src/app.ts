@@ -9,6 +9,9 @@ import handleError from './error/error';
 import './db';
 import { logger } from './winston';
 
+import cluster, { worker } from 'cluster';
+const cCPUs = require('os').cpus().length;
+
 const app = express();
 
 const router1 = express.Router();
@@ -34,6 +37,32 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     handleError(err, res);
 });
 
-app.listen(3000, () => {
-    logger.info('Server listening on port 3000');
-});
+if (cluster.isMaster) {
+    const num = 2;
+    const count = num ? num : cCPUs;
+
+    for (let i = 0; i < count; i++) {
+        cluster.fork();
+    }
+
+    cluster.on('online', () => {
+        console.log('시작');
+    });
+
+    cluster.on('disconnect', () => {
+        console.log('disconnect실행');
+        cluster.fork();
+    });
+    cluster.on('exit', (worker, code, signal) => {
+        console.log('워커 종료 : ' + worker.id);
+        console.log(code);
+        if (code == 200) {
+            cluster.fork();
+        }
+        process.exit();
+    });
+} else {
+    app.listen(3000, () => {
+        logger.info('Server listening on port 3000');
+    });
+}

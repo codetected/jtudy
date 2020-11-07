@@ -60,9 +60,13 @@ router.delete('/', validateFn.nameCheck, async (req, res) => {
 
     const user = await professorModel.findOne({ name: name });
     if (user) {
-        await professorModel.deleteOne({ name: name });
-        logger.info(`${name}의 professor정보 삭제됨`);
-        res.status(200).send('성공적으로 삭제 되었습니다.');
+        await professorModel
+            .deleteOne({ name: name })
+            .then((data) => {
+                logger.info(`${name}의 professor정보 삭제됨`);
+                res.status(200).send(`professor의 ${name}의 정보가 성공적으로 삭제되었습니다.`);
+            })
+            .catch((err) => res.status(400).send(err));
     } else {
         res.status(400).send('해당 유져가 존재하지 않습니다.');
     }
@@ -70,27 +74,28 @@ router.delete('/', validateFn.nameCheck, async (req, res) => {
 
 router.patch('/', validateFn.nameCheck, validateFn.phoneCheckForUpdate, validateFn.ageCheckForUpdate, async (req, res) => {
     let { name, age, phone } = req.body;
-
-    const user: Professor | null = await professorModel.findOne({ name: name });
-    if (user) {
-        if (!age) age = user.age;
-        if (!phone) phone = user.phone;
-        if (age || phone) {
-            await professorModel.updateOne({ _id: user.id }, { age, phone }, (err) => {
-                if (err) {
-                    requestLog(req);
-                    res.status(500).send(err);
-                } else {
-                    logger.info(`${name}의 professor정보 수정됨`);
-                    res.status(200).send('수정완료 되었습니다.');
-                }
-            });
-        } else {
-            res.status(400).send('수정할 정보를 입력해 주세요. age와 phone값의 수정이 가능합니다.');
-        }
-    } else {
-        res.status(400).send('해당 유져가 존재하지 않습니다.');
-    }
+    console.log(name, age, phone);
+    await professorModel
+        .findOne({ name: name })
+        .then(async (data) => {
+            if (age || phone) {
+                if (!age) age = data?.age;
+                if (!phone) phone = data?.phone;
+                await professorModel
+                    .updateOne({ _id: data?.id }, { age, phone })
+                    .then((data) => {
+                        logger.info(`${name}의 professor정보 수정됨`);
+                        res.status(200).send(data);
+                    })
+                    .catch((err) => {
+                        requestLog(req);
+                        res.status(500).send(err);
+                    });
+            } else {
+                res.status(400).send('수정할 정보를 입력해 주세요. age와 phone값의 수정이 가능합니다.');
+            }
+        })
+        .catch((err) => res.status(400).send('해당 유져가 존재하지 않습니다.'));
 });
 
 router.get('/search', validateFn.nameCheck, validateFn.ageCheck, validateFn.sexCheck, async (req, res) => {
